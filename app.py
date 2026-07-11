@@ -11,60 +11,55 @@ st.markdown("## Global Revenue & Data Analysis Report")
 # 2. Cached Data Loading Function
 @st.cache_data
 def load_data():
-    # Reads the Excel file uploaded in the same GitHub repository folder
     df = pd.read_excel("Sale_Report.xlsx")
     return df
 
 try:
     df = load_data()
     
-    # 3. INTERACTIVE SIDEBAR: Dynamic Filtering
+    # 3. INTERACTIVE SIDEBAR: Dynamic Filtering based on your data
     st.sidebar.header("Filter Controls")
     
-    # Dynamic Filter 1: Category (Fallback if column name is lowercase or capitalized)
-    category_col = [col for col in df.columns if col.lower() in ['category', 'kategori']]
-    if category_col:
-        selected_category = st.sidebar.multiselect(
-            "Select Category:",
-            options=df[category_col[0]].unique(),
-            default=df[category_col[0]].unique()
+    # Filter based on your actual 'Design No.' column
+    if "Design No." in df.columns:
+        selected_design = st.sidebar.multiselect(
+            "Select Design Number:",
+            options=sorted(df["Design No."].unique()),
+            default=sorted(df["Design No."].unique())[:5]  # Show first 5 items by default to prevent clutter
         )
-        df_selection = df[df[category_col[0]].isin(selected_category)]
+        df_selection = df[df["Design No."].isin(selected_design)]
     else:
         df_selection = df
 
     # 4. KEY PERFORMANCE INDICATORS (KPIs)
-    # Automatically detects numeric revenue columns
-    sales_col = [col for col in df.columns if col.lower() in ['total_penjualan', 'sales', 'revenue', 'total']]
-    
-    if sales_col:
-        total_sales = float(df_selection[sales_col[0]].sum())
-        average_sales = float(df_selection[sales_col[0]].mean())
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric(label="💰 Total Revenue", value=f"${total_sales:,.2f}")
-        with col2:
-            st.metric(label="📈 Average Transaction Value", value=f"${average_sales:,.2f}")
+    col1, col2 = st.columns(2)
+    with col1:
+        total_items = len(df_selection)
+        st.metric(label="📦 Total SKU Rows Selected", value=f"{total_items:,}")
+    with col2:
+        total_unique_designs = df_selection["Design No."].nunique() if "Design No." in df_selection.columns else 0
+        st.metric(label="🎨 Unique Designs Count", value=f"{total_unique_designs}")
             
     st.markdown("""---""")
 
     # 5. INTERACTIVE VISUALIZATION (Plotly Express)
     st.subheader("Sales Distribution & Trends")
     
-    # Automatically matches product/item column against sales column
-    product_col = [col for col in df.columns if col.lower() in ['produk', 'product', 'item']]
-    
-    if product_col and sales_col:
-        fig_product_sales = px.bar(
-            df_selection,
-            x=product_col[0],
-            y=sales_col[0],
-            title=f"<b>Revenue Generated per {str(product_col[0]).capitalize()}</b>",
-            color_discrete_sequence=["#0083B0"] * len(df_selection),
+    if "Design No." in df_selection.columns:
+        # Group and count the SKU variants per Design Number
+        df_chart = df_selection["Design No."].value_counts().reset_index()
+        df_chart.columns = ["Design No.", "Total SKU Variants"]
+        
+        fig_design_sales = px.bar(
+            df_chart,
+            x="Design No.",
+            y="Total SKU Variants",
+            title="<b>Total SKU Variants per Design Number</b>",
+            color="Total SKU Variants",
+            color_continuous_scale="Viridis",
             template="plotly_white",
         )
-        st.plotly_chart(fig_product_sales, use_container_width=True)
+        st.plotly_chart(fig_design_sales, use_container_width=True)
 
     # 6. RAW DATA INSPECTION
     st.subheader("Dataset Viewer")
