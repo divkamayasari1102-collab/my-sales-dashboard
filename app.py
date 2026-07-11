@@ -17,15 +17,20 @@ def load_data():
 try:
     df = load_data()
     
+    # FIX: Convert 'Design No.' column to string to prevent datetime vs str sorting error
+    if "Design No." in df.columns:
+        df["Design No."] = df["Design No."].astype(str)
+    
     # 3. INTERACTIVE SIDEBAR: Dynamic Filtering based on your data
     st.sidebar.header("Filter Controls")
     
     # Filter based on your actual 'Design No.' column
     if "Design No." in df.columns:
+        unique_designs = sorted(df["Design No."].unique())
         selected_design = st.sidebar.multiselect(
             "Select Design Number:",
-            options=sorted(df["Design No."].unique()),
-            default=sorted(df["Design No."].unique())[:5]  # Show first 5 items by default to prevent clutter
+            options=unique_designs,
+            default=unique_designs[:5]  # Show first 5 items by default to prevent clutter
         )
         df_selection = df[df["Design No."].isin(selected_design)]
     else:
